@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "file-listing-server": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["d:\\workspace\\python\\sample-mcp\\server.py"]
+    }
+  }
+}
