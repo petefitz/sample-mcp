@@ -4,6 +4,17 @@
       "type": "stdio",
       "command": "python",
       "args": ["d:\\workspace\\python\\sample-mcp\\server.py"]
+    },
+    "file-listing-server-docker": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-v", "C:/Users:/host/Users:ro",
+        "-v", "C:/:/host/C:ro",
+        "mcp-file-server",
+        "python", "server.py"
+      ]
     }
   }
 }

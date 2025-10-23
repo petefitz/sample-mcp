@@ -1,0 +1,40 @@
+# Docker Compose configuration for MCP File Listing Server
+version: '3.8'
+
+services:
+  mcp-file-server:
+    build: .
+    container_name: mcp-file-listing-server
+    stdin_open: true
+    tty: true
+    volumes:
+      # Mount host directories you want to access from the container
+      # Adjust these paths based on your needs
+      - "C:/Users:/host/Users:ro"  # Read-only access to Users directory
+      - "C:/:/host/C:ro"           # Read-only access to C: drive
+      # Add more volume mounts as needed
+    environment:
+      - PYTHONUNBUFFERED=1
+    # For stdio-based MCP servers, we don't need port mapping
+    # ports:
+    #   - "8000:8000"
+    
+    # Keep container running for interactive use
+    command: tail -f /dev/null
+
+  # Alternative service for running with MCP Inspector
+  mcp-inspector:
+    build: .
+    container_name: mcp-inspector
+    ports:
+      - "3000:3000"
+    volumes:
+      - "C:/Users:/host/Users:ro"
+      - "C:/:/host/C:ro"
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      sh -c "
+        npm install -g @modelcontextprotocol/inspector &&
+        npx @modelcontextprotocol/inspector python server.py
+      "
