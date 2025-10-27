@@ -1,13 +1,20 @@
-# MCP File Listing Server
+# MCP File Listing & Weather Server
 
-A Model Context Protocol (MCP) server that provides file and directory listing capabilities from local folders.
+A Model Context Protocol (MCP) server that provides file listing and weather information capabilities.
 
 ## Features
 
+### File Operations
 - **`list_files` tool**: List all files and directories in a specified folder path
 - **Error handling**: Graceful handling of invalid paths, permission errors, and inaccessible files
 - **Metadata included**: Returns file/directory names, types, sizes, and modification times
 - **Sorted output**: Results are alphabetically sorted by filename
+
+### Weather Information  
+- **`get_weather` tool**: Get current weather information for any city worldwide
+- **`get_weather_forecast` tool**: Get weather forecasts up to 5 days ahead
+- **Multiple units**: Support for Celsius, Fahrenheit, and Kelvin temperature units
+- **Comprehensive data**: Temperature, humidity, wind, pressure, visibility, and conditions
 
 ## Installation
 
