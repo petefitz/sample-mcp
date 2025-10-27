@@ -14,8 +14,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the server code
-COPY server.py .
+# Copy the server code (use Docker-optimized version with path translation)
+COPY server_docker.py ./server.py
 COPY README.md .
 
 # Create a non-root user for security
@@ -28,6 +28,7 @@ USER mcp
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
+ENV MCP_SERVER_MODE=docker
 
 # Default command to run the MCP server
 CMD ["python", "server.py"]

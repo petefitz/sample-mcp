@@ -37,8 +37,10 @@ def list_files(folder_path: str) -> dict:
                 # Convert C:\path to /host/C/path
                 folder_path = folder_path.replace('\\', '/')
                 if folder_path.startswith('C:/') or folder_path.startswith('c:/'):
-                    folder_path = '/host/' + folder_path
+                    # Remove the C: prefix and add /host/C
+                    folder_path = '/host/C' + folder_path[2:]
                 else:
+                    # Handle C:path format (without slash)
                     folder_path = '/host/C/' + folder_path[2:]
                 path = Path(folder_path)
             else:

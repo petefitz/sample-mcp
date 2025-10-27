@@ -23,5 +23,7 @@ coverage.xml
 .DS_Store
 Thumbs.db
 test_server.py
+test_docker.py
+server.py
 *.md
 !README.md
