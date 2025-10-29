@@ -233,6 +233,144 @@ def get_groups(
 
 
 @mcp.tool()
+def get_usercount(group_id: str) -> Dict[str, Any]:
+    """
+    Get the user count for a specific group by calling the group memberships API.
+
+    Args:
+        group_id: The ID of the group to get user count for
+
+    Returns:
+        Dictionary containing:
+        - user_count: Total number of users in the group
+        - group_id: The group ID that was queried
+        - success: Boolean indicating if the request was successful
+        - error: Error message (if any occurred)
+    """
+    try:
+        # Get configuration from environment variables
+        api_url = os.getenv("API_ENDPOINT")
+        bearer_token = os.getenv("BEARER_TOKEN")
+
+        # Validate required configuration
+        if not api_url:
+            return {
+                "error": "API URL not configured. Please set API_ENDPOINT in .env file.",
+                "success": False,
+            }
+
+        if not bearer_token:
+            return {
+                "error": "Bearer token not configured. Please set BEARER_TOKEN in .env file.",
+                "success": False,
+            }
+
+        # Validate group_id parameter
+        if not group_id or not group_id.strip():
+            return {
+                "error": "group_id parameter is required and cannot be empty",
+                "success": False,
+            }
+
+        # Prepare request headers with Bearer token
+        headers = {
+            "Authorization": f"Bearer {bearer_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        logger.info(f"Fetching user count for group ID: {group_id}")
+
+        # Construct the API URL for group memberships
+        # Based on the sample response structure, this appears to be a memberships endpoint
+        memberships_url = f"{api_url}/api/v2/authorizations/group-memberships?groupId={group_id}&pageIndex=1&pageSize=0"
+
+        # Make the API request
+        response = requests.get(memberships_url, headers=headers, timeout=30)
+
+        # Check if request was successful
+        response.raise_for_status()
+
+        # Parse JSON response
+        data = response.json()
+
+        # Extract the total count from the page object
+        page_info = data.get("page", {})
+        total_users = page_info.get("total", 0)
+
+        # Structure the response
+        result = {
+            "user_count": total_users,
+            "group_id": group_id,
+            "timestamp": response.headers.get("Date", "Unknown"),
+            "success": True,
+        }
+
+        logger.info(
+            f"Successfully retrieved user count for group {group_id}: {total_users} users"
+        )
+        return result
+
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Connection error: {e}")
+        return {
+            "error": f"Failed to connect to API: {str(e)}",
+            "group_id": group_id,
+            "success": False,
+        }
+    except requests.exceptions.Timeout as e:
+        logger.error(f"Request timeout: {e}")
+        return {
+            "error": "API request timed out. Please try again.",
+            "group_id": group_id,
+            "success": False,
+        }
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error: {e}")
+        status_code = e.response.status_code if e.response else "Unknown"
+
+        # Handle common HTTP status codes
+        if status_code == 401:
+            error_msg = "Authentication failed. Please check your bearer token."
+        elif status_code == 403:
+            error_msg = "Access forbidden. Check your permissions for this group."
+        elif status_code == 404:
+            error_msg = f"Group not found or memberships endpoint not accessible for group ID: {group_id}"
+        elif status_code == 429:
+            error_msg = "Rate limit exceeded. Please wait and try again."
+        else:
+            error_msg = f"API request failed with status {status_code}"
+
+        return {
+            "error": error_msg,
+            "status_code": status_code,
+            "group_id": group_id,
+            "success": False,
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error: {e}")
+        return {
+            "error": f"Request failed: {str(e)}",
+            "group_id": group_id,
+            "success": False,
+        }
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {e}")
+        return {
+            "error": "Invalid JSON response from API",
+            "group_id": group_id,
+            "success": False,
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error getting user count for group {group_id}: {e}")
+        return {
+            "error": f"Unexpected error: {str(e)}",
+            "group_id": group_id,
+            "success": False,
+        }
+
+
+@mcp.tool()
 def get_weather_forecast(
     city: str, country_code: str = "", days: int = 5
 ) -> Dict[str, Any]:
