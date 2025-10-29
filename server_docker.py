@@ -1,11 +1,12 @@
 # Updated server.py to handle containerized paths
 import asyncio
+import json
 import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
+
 import requests
-import json
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
@@ -118,7 +119,7 @@ def list_files(folder_path: str) -> dict:
 
 @mcp.tool()
 def get_groups(
-    page: int = 1, limit: int = 10, search: Optional[str] = None
+    page: int = 1, page_size: int = 10, search: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Retrieve groups from the API with pagination and optional search functionality.
@@ -126,7 +127,7 @@ def get_groups(
 
     Args:
         page: Page number for pagination (default: 1)
-        limit: Number of groups per page (default: 10)
+        page_size: Number of groups per page (default: 10)
         search: Optional search term to filter groups
 
     Returns:
@@ -162,16 +163,16 @@ def get_groups(
         }
 
         # Prepare query parameters
-        params = {"page": page, "limit": limit}
+        params = {"page": page, "page_size": page_size}
 
         if search:
             params["search"] = search
 
         logger.info(
-            f"Fetching groups from API: page={page}, limit={limit}, search={search}"
+            f"Fetching groups from API: page={page}, page_size={page_size}, search={search}"
         )
 
-        api_url = f"{api_url}/api/v2/authorizations/groups?managed=true&q={search}&pageSize={limit}&pageIndex={page}"
+        api_url = f"{api_url}/api/v2/authorizations/groups?managed=true&q={search}&pageSize={page_size}&pageIndex={page}"
 
         # Make the API request
         response = requests.get(api_url, headers=headers, params=params, timeout=30)
@@ -198,7 +199,7 @@ def get_groups(
             "original_groups_array": groups_array,  # Keep original for reference
             "pagination": {
                 "page": page,
-                "limit": limit,
+                "page_size": page_size,
                 "total": data.get("total", len(groups_array)),
                 "total_pages": data.get("total_pages", 1),
                 "has_next": data.get("has_next", False),
@@ -325,4 +326,5 @@ def get_weather_forecast(
 
 if __name__ == "__main__":
     logger.info("Starting MCP File Listing Server...")
+    mcp.run("stdio")
     mcp.run("stdio")
