@@ -192,18 +192,29 @@ def get_groups(
             if isinstance(group, dict) and "name" in group and "id" in group:
                 groups_dict[group["name"]] = group["id"]
 
+        # Extract pagination info from the 'page' object in the response
+        page_info = data.get("page", {})
+        api_page_index = page_info.get("pageIndex", page)
+        api_page_size = page_info.get("pageSize", page_size)
+        api_total = page_info.get("total", len(groups_array))
+        
+        # Calculate pagination metadata
+        total_pages = max(1, (api_total + api_page_size - 1) // api_page_size) if api_page_size > 0 else 1
+        has_next = api_page_index < total_pages
+        has_previous = api_page_index > 1
+
         # Structure the response
         result = {
             "groups": groups_dict,
             "groups_count": len(groups_dict),
             "original_groups_array": groups_array,  # Keep original for reference
             "pagination": {
-                "page": page,
-                "page_size": page_size,
-                "total": data.get("total", len(groups_array)),
-                "total_pages": data.get("total_pages", 1),
-                "has_next": data.get("has_next", False),
-                "has_previous": data.get("has_previous", False),
+                "page": api_page_index,
+                "page_size": api_page_size,
+                "total": api_total,
+                "total_pages": total_pages,
+                "has_next": has_next,
+                "has_previous": has_previous,
             },
             "search": search,
             "timestamp": response.headers.get("Date", "Unknown"),
