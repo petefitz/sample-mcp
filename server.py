@@ -382,79 +382,118 @@ def get_usercount(group_id: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def get_weather_forecast(
-    city: str, country_code: str = "", days: int = 5
+def get_repoteams(
+    repo_slug: str = None
 ) -> Dict[str, Any]:
     """
-    Get weather forecast for a specified city.
-
+    Retrieve teams for a specific repository from the GitHub API.
+    
     Args:
-        city: The name of the city to get forecast for
-        country_code: Optional 2-letter country code (e.g., "US", "UK", "CA")
-        days: Number of forecast days (1-5)
-
+        repo_slug: The repository slug/name to get teams for
+        
     Returns:
-        Dictionary containing weather forecast information
+        Dictionary containing:
+        - repo: The repository slug that was queried
+        - teams: List of team names
+        - team_count: Number of teams found
+        - timestamp: API response timestamp
+        - success: Boolean indicating if the request was successful
+        - error: Error message (if any occurred)
     """
     try:
-        # Validate days parameter
-        if days < 1 or days > 5:
-            days = 5
+        # Get configuration from environment variables
+        api_url = os.getenv("GITHUB_API_ENDPOINT")
+        bearer_token = os.getenv("GITHUB_BEARER_TOKEN")
+        org = os.getenv("GITHUB_ORG_NAME", "Hogarth-Worldwide")
 
-        location = city
-        if country_code:
-            location = f"{city},{country_code}"
-
-        # Mock forecast data for demonstration
-        forecast_days = []
-        base_temp = 20
-
-        for i in range(days):
-            day_data = {
-                "date": f"2025-10-{28 + i}",
-                "temperature": {"high": base_temp + i + 2, "low": base_temp + i - 3},
-                "condition": {
-                    "main": ["Sunny", "Cloudy", "Rainy", "Partly Cloudy", "Clear"][
-                        i % 5
-                    ],
-                    "description": [
-                        "clear sky",
-                        "few clouds",
-                        "light rain",
-                        "partly cloudy",
-                        "clear sky",
-                    ][i % 5],
-                },
-                "precipitation": {
-                    "chance": [10, 30, 80, 20, 5][i % 5],
-                    "amount": [0, 0.2, 5.4, 1.1, 0][i % 5],
-                },
-                "wind": {"speed": 3.0 + (i * 0.5), "direction": 180 + (i * 30)},
+        # Validate required configuration
+        if not api_url:
+            return {
+                "error": "API URL not configured. Please set GITHUB_API_ENDPOINT in .env file.",
+                "success": False,
             }
-            forecast_days.append(day_data)
 
-        mock_forecast = {
-            "location": {
-                "city": city,
-                "country": country_code.upper() if country_code else "Unknown",
-            },
-            "forecast": forecast_days,
-            "forecast_days": days,
-            "timestamp": "2025-10-27T22:55:00Z",
-            "source": "OpenWeatherMap API (Demo Mode)",
+        if not bearer_token:
+            return {
+                "error": "Bearer token not configured. Please set GITHUB_BEARER_TOKEN in .env file.",
+                "success": False,
+            }
+
+        # Prepare request headers with Bearer token
+        headers = {
+            "Authorization": f"Bearer {bearer_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        logger.info(
+            f"Fetching teams from API: repo_slug={repo_slug}"
+        )
+
+        api_url = f"{api_url}/repos/{org}/{repo_slug}/teams"
+
+        # Make the API request
+        response = requests.get(api_url, headers=headers, timeout=30)
+
+        # Check if request was successful
+        response.raise_for_status()
+
+        # Parse JSON response
+        data = response.json()
+
+        # Extract team names from the response array
+        team_names = []
+        if isinstance(data, list):
+            for team in data:
+                if isinstance(team, dict) and "name" in team:
+                    team_names.append(team["name"])
+
+        # Structure the response
+        result = {
+            "repo": repo_slug,
+            "teams": team_names,
+            "team_count": len(team_names),
+            "timestamp": response.headers.get("Date", "Unknown"),
             "success": True,
         }
 
-        logger.info(f"Retrieved {days}-day forecast for {location}")
-        return mock_forecast
+        logger.info(
+            f"Successfully retrieved {len(team_names)} teams for repo {repo_slug}"
+        )
+        return result
 
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Connection error: {e}")
+        return {"error": f"Failed to connect to API: {str(e)}", "success": False}
+    except requests.exceptions.Timeout as e:
+        logger.error(f"Request timeout: {e}")
+        return {"error": "API request timed out. Please try again.", "success": False}
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error: {e}")
+        status_code = e.response.status_code if e.response else "Unknown"
+
+        # Handle common HTTP status codes
+        if status_code == 401:
+            error_msg = "Authentication failed. Please check your bearer token."
+        elif status_code == 403:
+            error_msg = "Access forbidden. Check your permissions."
+        elif status_code == 404:
+            error_msg = "API endpoint not found. Check your API URL."
+        elif status_code == 429:
+            error_msg = "Rate limit exceeded. Please wait and try again."
+        else:
+            error_msg = f"API request failed with status {status_code}"
+
+        return {"error": error_msg, "status_code": status_code, "success": False}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error: {e}")
+        return {"error": f"Request failed: {str(e)}", "success": False}
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {e}")
+        return {"error": "Invalid JSON response from API", "success": False}
     except Exception as e:
-        logger.error(f"Error getting forecast for {city}: {e}")
-        return {
-            "error": f"Failed to get forecast: {str(e)}",
-            "city": city,
-            "success": False,
-        }
+        logger.error(f"Unexpected error getting groups: {e}")
+        return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
 if __name__ == "__main__":

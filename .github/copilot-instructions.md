@@ -14,3 +14,5 @@ This is a Model Context Protocol (MCP) server written in Python that provides fu
 
 ## Usage
 The server provides a `list_files` tool that accepts a folder path and returns a list of files and directories within that path.
+
+When adding code for logging, please conform to W1203 and use lazy formatting.
