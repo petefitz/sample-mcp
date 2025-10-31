@@ -648,7 +648,6 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
         - archived_count: Number of archived repositories
         - active_count: Number of active repositories
         - total_count: Total number of repositories
-        - original_response: Original API response for reference
         - timestamp: API response timestamp
         - success: Boolean indicating if the request was successful
         - error: Error message (if any occurred)
@@ -688,33 +687,62 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
 
         logger.info(f"Fetching repositories for team: {team_name}")
 
-        # Construct the API URL for team repositories
-        team_repos_url = f"{api_url}/orgs/{org}/teams/{team_name}/repos"
-
-        # Make the API request
-        response = requests.get(team_repos_url, headers=headers, timeout=30)
-
-        # Check if request was successful
-        response.raise_for_status()
-
-        # Parse JSON response
-        data = response.json()
-
         # Initialize lists for categorizing repositories
         archived_repos = []
         active_repos = []
+        
+        # Start with the first page
+        current_url = f"{api_url}/orgs/{org}/teams/{team_name}/repos"
+        page_count = 0
+        
+        while current_url:
+            page_count += 1
+            logger.info(f"Fetching page {page_count} from: {current_url}")
+            
+            # Make the API request
+            response = requests.get(current_url, headers=headers, timeout=30)
 
-        # Process the repository data
-        if isinstance(data, list):
-            for repo in data:
-                if isinstance(repo, dict) and "name" in repo:
-                    repo_name = repo["name"]
-                    is_archived = repo.get("archived", False)
-                    
-                    if is_archived:
-                        archived_repos.append(repo_name)
-                    else:
-                        active_repos.append(repo_name)
+            # Check if request was successful
+            response.raise_for_status()
+
+            # Parse JSON response
+            data = response.json()
+
+            # Process the repository data from this page
+            if isinstance(data, list):
+                for repo in data:
+                    if isinstance(repo, dict) and "name" in repo:
+                        repo_name = repo["name"]
+                        is_archived = repo.get("archived", False)
+                        
+                        if is_archived:
+                            archived_repos.append(repo_name)
+                        else:
+                            active_repos.append(repo_name)
+            
+            # Check for next page in Link header
+            current_url = None
+            link_header = response.headers.get("Link", "")
+            if link_header:
+                # Parse Link header to find "next" relation
+                links = {}
+                for link in link_header.split(","):
+                    link = link.strip()
+                    if ";" in link:
+                        url_part, rel_part = link.split(";", 1)
+                        url = url_part.strip().strip("<>")
+                        rel = rel_part.strip()
+                        if 'rel="next"' in rel:
+                            links["next"] = url
+                
+                # Set next URL if it exists
+                current_url = links.get("next")
+                if current_url:
+                    logger.info(f"Found next page: {current_url}")
+                else:
+                    logger.info("No more pages found")
+        
+        logger.info(f"Completed pagination after {page_count} pages")
 
         # Sort the lists for consistent output
         archived_repos.sort()
