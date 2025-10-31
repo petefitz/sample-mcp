@@ -382,6 +382,130 @@ def get_usercount(group_id: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
+def get_teams(
+    page: int = 1, page_size: int = 30) -> Dict[str, Any]:
+    """
+    Retrieve teams from the GitHub API.
+    
+    Args:
+        page: Page number for pagination (default: 1)
+        page_size: Number of groups per page (default: 30)
+        
+    Returns:
+        Dictionary containing:
+        - teams: List of team names
+        - team_count: Number of teams found
+        - timestamp: API response timestamp
+        - success: Boolean indicating if the request was successful
+        - error: Error message (if any occurred)
+    """
+    try:
+        # Get configuration from environment variables
+        api_url = os.getenv("GITHUB_API_ENDPOINT")
+        bearer_token = os.getenv("GITHUB_BEARER_TOKEN")
+        org = os.getenv("GITHUB_ORG_NAME", "Hogarth-Worldwide")
+
+        # Validate required configuration
+        if not api_url:
+            return {
+                "error": "API URL not configured. Please set GITHUB_API_ENDPOINT in .env file.",
+                "success": False,
+            }
+
+        if not bearer_token:
+            return {
+                "error": "Bearer token not configured. Please set GITHUB_BEARER_TOKEN in .env file.",
+                "success": False,
+            }
+
+        # Prepare request headers with Bearer token
+        headers = {
+            "Authorization": f"Bearer {bearer_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        logger.info(
+            f"Fetching teams from API: per_page={page_size}&page={page}"
+        )
+
+        api_url = f"{api_url}/orgs/{org}/teams?per_page={page_size}&page={page}"
+
+        # Make the API request
+        response = requests.get(api_url, headers=headers, timeout=30)
+
+        # Check if request was successful
+        response.raise_for_status()
+
+        # Parse JSON response
+        data = response.json()
+
+        # Extract team names from the response array, including parent names if present
+        # Use a set to ensure no duplicates
+        team_names_set = set()
+        
+        if isinstance(data, list):
+            for team in data:
+                if isinstance(team, dict) and "name" in team:
+                    # Add the team name
+                    team_names_set.add(team["name"])
+                    
+                    # Check if there's a parent field and it's not null
+                    parent = team.get("parent")
+                    if parent and isinstance(parent, dict) and "name" in parent:
+                        team_names_set.add(parent["name"])
+
+        # Convert set to sorted list for consistent output
+        team_names = sorted(team_names_set)
+
+        # Structure the response
+        result = {
+            "teams": team_names,
+            "team_count": len(team_names),
+            "timestamp": response.headers.get("Date", "Unknown"),
+            "success": True,
+        }
+
+        logger.info(
+            f"Successfully retrieved {len(team_names)} unique teams"
+        )
+        return result
+
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Connection error: {e}")
+        return {"error": f"Failed to connect to API: {str(e)}", "success": False}
+    except requests.exceptions.Timeout as e:
+        logger.error(f"Request timeout: {e}")
+        return {"error": "API request timed out. Please try again.", "success": False}
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error: {e}")
+        status_code = e.response.status_code if e.response else "Unknown"
+
+        # Handle common HTTP status codes
+        if status_code == 401:
+            error_msg = "Authentication failed. Please check your bearer token."
+        elif status_code == 403:
+            error_msg = "Access forbidden. Check your permissions."
+        elif status_code == 404:
+            error_msg = "API endpoint not found. Check your API URL."
+        elif status_code == 429:
+            error_msg = "Rate limit exceeded. Please wait and try again."
+        else:
+            error_msg = f"API request failed with status {status_code}"
+
+        return {"error": error_msg, "status_code": status_code, "success": False}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error: {e}")
+        return {"error": f"Request failed: {str(e)}", "success": False}
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {e}")
+        return {"error": "Invalid JSON response from API", "success": False}
+    except Exception as e:
+        logger.error(f"Unexpected error getting groups: {e}")
+        return {"error": f"Unexpected error: {str(e)}", "success": False}
+
+
+@mcp.tool()
 def get_repoteams(
     repo_slug: str = None
 ) -> Dict[str, Any]:
@@ -604,7 +728,6 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
             "archived_count": len(archived_repos),
             "active_count": len(active_repos),
             "total_count": len(archived_repos) + len(active_repos),
-            "original_response": data,  # Keep original for reference
             "timestamp": response.headers.get("Date", "Unknown"),
             "success": True,
         }
