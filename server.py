@@ -441,12 +441,23 @@ def get_repoteams(
         # Parse JSON response
         data = response.json()
 
-        # Extract team names from the response array
-        team_names = []
+        # Extract team names from the response array, including parent names if present
+        # Use a set to ensure no duplicates
+        team_names_set = set()
+        
         if isinstance(data, list):
             for team in data:
                 if isinstance(team, dict) and "name" in team:
-                    team_names.append(team["name"])
+                    # Add the team name
+                    team_names_set.add(team["name"])
+                    
+                    # Check if there's a parent field and it's not null
+                    parent = team.get("parent")
+                    if parent and isinstance(parent, dict) and "name" in parent:
+                        team_names_set.add(parent["name"])
+
+        # Convert set to sorted list for consistent output
+        team_names = sorted(team_names_set)
 
         # Structure the response
         result = {
@@ -458,7 +469,7 @@ def get_repoteams(
         }
 
         logger.info(
-            f"Successfully retrieved {len(team_names)} teams for repo {repo_slug}"
+            f"Successfully retrieved {len(team_names)} unique teams for repo {repo_slug}"
         )
         return result
 
