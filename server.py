@@ -496,6 +496,173 @@ def get_repoteams(
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
+@mcp.tool()
+def get_teamrepos(team_name: str) -> Dict[str, Any]:
+    """
+    Retrieve repositories for a specific team from the GitHub API.
+    Collates repositories into archived and non-archived lists.
+    
+    Args:
+        team_name: The name of the team to get repositories for
+        
+    Returns:
+        Dictionary containing:
+        - team_name: The team name that was queried
+        - archived_repos: List of archived repository names
+        - active_repos: List of non-archived repository names
+        - archived_count: Number of archived repositories
+        - active_count: Number of active repositories
+        - total_count: Total number of repositories
+        - original_response: Original API response for reference
+        - timestamp: API response timestamp
+        - success: Boolean indicating if the request was successful
+        - error: Error message (if any occurred)
+    """
+    try:
+        # Get configuration from environment variables
+        api_url = os.getenv("GITHUB_API_ENDPOINT")
+        bearer_token = os.getenv("GITHUB_BEARER_TOKEN")
+        org = os.getenv("GITHUB_ORG_NAME", "Hogarth-Worldwide")
+
+        # Validate required configuration
+        if not api_url:
+            return {
+                "error": "API URL not configured. Please set GITHUB_API_ENDPOINT in .env file.",
+                "success": False,
+            }
+
+        if not bearer_token:
+            return {
+                "error": "Bearer token not configured. Please set GITHUB_BEARER_TOKEN in .env file.",
+                "success": False,
+            }
+
+        # Validate team_name parameter
+        if not team_name or not team_name.strip():
+            return {
+                "error": "team_name parameter is required and cannot be empty",
+                "success": False,
+            }
+
+        # Prepare request headers with Bearer token
+        headers = {
+            "Authorization": f"Bearer {bearer_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        logger.info(f"Fetching repositories for team: {team_name}")
+
+        # Construct the API URL for team repositories
+        team_repos_url = f"{api_url}/orgs/{org}/teams/{team_name}/repos"
+
+        # Make the API request
+        response = requests.get(team_repos_url, headers=headers, timeout=30)
+
+        # Check if request was successful
+        response.raise_for_status()
+
+        # Parse JSON response
+        data = response.json()
+
+        # Initialize lists for categorizing repositories
+        archived_repos = []
+        active_repos = []
+
+        # Process the repository data
+        if isinstance(data, list):
+            for repo in data:
+                if isinstance(repo, dict) and "name" in repo:
+                    repo_name = repo["name"]
+                    is_archived = repo.get("archived", False)
+                    
+                    if is_archived:
+                        archived_repos.append(repo_name)
+                    else:
+                        active_repos.append(repo_name)
+
+        # Sort the lists for consistent output
+        archived_repos.sort()
+        active_repos.sort()
+
+        # Structure the response
+        result = {
+            "team_name": team_name,
+            "archived_repos": archived_repos,
+            "active_repos": active_repos,
+            "archived_count": len(archived_repos),
+            "active_count": len(active_repos),
+            "total_count": len(archived_repos) + len(active_repos),
+            "original_response": data,  # Keep original for reference
+            "timestamp": response.headers.get("Date", "Unknown"),
+            "success": True,
+        }
+
+        logger.info(
+            f"Successfully retrieved {result['total_count']} repositories for team {team_name} "
+            f"({result['active_count']} active, {result['archived_count']} archived)"
+        )
+        return result
+
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Connection error: {e}")
+        return {
+            "error": f"Failed to connect to API: {str(e)}",
+            "team_name": team_name,
+            "success": False,
+        }
+    except requests.exceptions.Timeout as e:
+        logger.error(f"Request timeout: {e}")
+        return {
+            "error": "API request timed out. Please try again.",
+            "team_name": team_name,
+            "success": False,
+        }
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error: {e}")
+        status_code = e.response.status_code if e.response else "Unknown"
+
+        # Handle common HTTP status codes
+        if status_code == 401:
+            error_msg = "Authentication failed. Please check your bearer token."
+        elif status_code == 403:
+            error_msg = "Access forbidden. Check your permissions for this team."
+        elif status_code == 404:
+            error_msg = f"Team not found or repositories not accessible for team: {team_name}"
+        elif status_code == 429:
+            error_msg = "Rate limit exceeded. Please wait and try again."
+        else:
+            error_msg = f"API request failed with status {status_code}"
+
+        return {
+            "error": error_msg,
+            "status_code": status_code,
+            "team_name": team_name,
+            "success": False,
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error: {e}")
+        return {
+            "error": f"Request failed: {str(e)}",
+            "team_name": team_name,
+            "success": False,
+        }
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {e}")
+        return {
+            "error": "Invalid JSON response from API",
+            "team_name": team_name,
+            "success": False,
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error getting repositories for team {team_name}: {e}")
+        return {
+            "error": f"Unexpected error: {str(e)}",
+            "team_name": team_name,
+            "success": False,
+        }
+
+
 if __name__ == "__main__":
     # Run the MCP server using stdio transport
     mcp.run("stdio")
