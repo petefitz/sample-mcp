@@ -8,25 +8,21 @@ set -e
 case "$1" in
     build)
         echo "Building MCP File Listing Server Docker image..."
-        docker build -t mcp-file-server .
+        docker build -t mcp-github-server .
         ;;
     
     run)
         echo "Running MCP File Listing Server in Docker..."
         docker run -it --rm \
-            -v "C:/Users:/host/Users:ro" \
-            -v "C:/:/host/C:ro" \
-            --name mcp-file-server \
-            mcp-file-server
+            --name mcp-github-server \
+            mcp-github-server
         ;;
     
     interactive)
         echo "Running MCP server in interactive mode..."
         docker run -it --rm \
-            -v "C:/Users:/host/Users:ro" \
-            -v "C:/:/host/C:ro" \
-            --name mcp-file-server-interactive \
-            mcp-file-server bash
+            --name mcp-github-server-interactive \
+            mcp-github-server bash
         ;;
     
     compose-up)
@@ -43,10 +39,8 @@ case "$1" in
         echo "Running MCP Inspector in Docker..."
         docker run -it --rm \
             -p 3000:3000 \
-            -v "C:/Users:/host/Users:ro" \
-            -v "C:/:/host/C:ro" \
             --name mcp-inspector \
-            mcp-file-server \
+            mcp-github-server \
             sh -c "npm install -g @modelcontextprotocol/inspector && npx @modelcontextprotocol/inspector python server.py"
         ;;
     
@@ -54,13 +48,13 @@ case "$1" in
         echo "Testing MCP server in Docker..."
         docker run --rm \
             -v "$(pwd):/app" \
-            mcp-file-server \
+            mcp-github-server \
             python test_server.py
         ;;
     
     logs)
         echo "Showing container logs..."
-        docker logs mcp-file-listing-server
+        docker logs mcp-pete-github-server
         ;;
     
     *)

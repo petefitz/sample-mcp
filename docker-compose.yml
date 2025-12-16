@@ -2,17 +2,11 @@
 version: '3.8'
 
 services:
-  mcp-file-server:
+  mcp-github-server:
     build: .
-    container_name: mcp-file-listing-server
+    container_name: mcp-pete-github-server
     stdin_open: true
     tty: true
-    volumes:
-      # Mount host directories you want to access from the container
-      # Adjust these paths based on your needs
-      - "C:/Users:/host/Users:ro"  # Read-only access to Users directory
-      - "C:/:/host/C:ro"           # Read-only access to C: drive
-      # Add more volume mounts as needed
     environment:
       - PYTHONUNBUFFERED=1
     # For stdio-based MCP servers, we don't need port mapping

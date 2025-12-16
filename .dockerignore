@@ -26,7 +26,6 @@ test_server.py
 test_docker.py
 test_groups.py
 test_weather.py
-server.py
 .env
 *.md
 !README.md

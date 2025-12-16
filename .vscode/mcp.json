@@ -1,18 +1,16 @@
 {
   "servers": {
-    "file-listing-server": {
+    "pete-github-server": {
       "type": "stdio",
       "command": "python",
       "args": [".\\server.py"]
     },
-    "file-listing-server-docker": {
+    "pete-github-server-docker": {
       "type": "stdio",
       "command": "docker",
       "args": [
-        "run", "--rm", "-i",
-        "-v", "C:/Users:/host/Users:ro",
-        "-v", "C:/:/host/C:ro",
-        "mcp-file-server",
+        "run", "--rm", "-i", "--env-file", ".env",
+        "mcp-github-server",
         "python", "server.py"
       ]
     }

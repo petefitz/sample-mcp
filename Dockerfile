@@ -15,7 +15,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the server code (use Docker-optimized version with path translation)
-COPY server_docker.py ./server.py
+COPY server.py .
+COPY github_client_factory.py .
+COPY github_service.py .
 COPY README.md .
 
 # Create a non-root user for security

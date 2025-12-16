@@ -2,14 +2,15 @@ import asyncio
 import json
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import requests
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
-from mcp.server.stdio import stdio_server
+
+from github_client_factory import AppConfiguration, GitHubClientFactory
+from github_service import GitHubService
 
 # Load environment variables from .env file
 load_dotenv()
@@ -19,13 +20,12 @@ load_dotenv()
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stderr)],
+    handlers=[logging.StreamHandler()],
 )
-logger = logging.getLogger("file-listing-server")
+logger = logging.getLogger("pete-github-server")
 
 # Initialize the FastMCP server
-mcp = FastMCP("file-listing-server")
-
+mcp = FastMCP("pete-github-server")
 
 @mcp.tool()
 def list_files(folder_path: str) -> Dict[str, Any]:
@@ -180,9 +180,13 @@ def get_groups(
         api_page_index = page_info.get("pageIndex", page)
         api_page_size = page_info.get("pageSize", page_size)
         api_total = page_info.get("total", len(groups_array))
-        
+
         # Calculate pagination metadata
-        total_pages = max(1, (api_total + api_page_size - 1) // api_page_size) if api_page_size > 0 else 1
+        total_pages = (
+            max(1, (api_total + api_page_size - 1) // api_page_size)
+            if api_page_size > 0
+            else 1
+        )
         has_next = api_page_index < total_pages
         has_previous = api_page_index > 1
 
@@ -382,15 +386,14 @@ def get_usercount(group_id: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def get_teams(
-    page: int = 1, page_size: int = 100) -> Dict[str, Any]:
+def get_teams(page: int = 1, page_size: int = 100) -> Dict[str, Any]:
     """
     Retrieve teams from the GitHub API.
-    
+
     Args:
         page: Page number for pagination (default: 1)
         page_size: Number of groups per page (default: 100)
-        
+
     Returns:
         Dictionary containing:
         - teams: List of team names
@@ -403,7 +406,7 @@ def get_teams(
         # Get configuration from environment variables
         api_url = os.getenv("GITHUB_API_ENDPOINT")
         bearer_token = os.getenv("GITHUB_BEARER_TOKEN")
-        org = os.getenv("GITHUB_ORG_NAME", "Hogarth-Worldwide")
+        org = os.getenv("GITHUB_ORG_NAME")
 
         # Validate required configuration
         if not api_url:
@@ -425,9 +428,7 @@ def get_teams(
             "Accept": "application/json",
         }
 
-        logger.info(
-            f"Fetching teams from API: per_page={page_size}&page={page}"
-        )
+        logger.info(f"Fetching teams from API: per_page={page_size}&page={page}")
 
         api_url = f"{api_url}/orgs/{org}/teams?per_page={page_size}&page={page}"
 
@@ -443,13 +444,13 @@ def get_teams(
         # Extract team names from the response array, including parent names if present
         # Use a set to ensure no duplicates
         team_names_set = set()
-        
+
         if isinstance(data, list):
             for team in data:
                 if isinstance(team, dict) and "name" in team:
                     # Add the team name
                     team_names_set.add(team["name"])
-                    
+
                     # Check if there's a parent field and it's not null
                     parent = team.get("parent")
                     if parent and isinstance(parent, dict) and "name" in parent:
@@ -466,9 +467,7 @@ def get_teams(
             "success": True,
         }
 
-        logger.info(
-            f"Successfully retrieved {len(team_names)} unique teams"
-        )
+        logger.info(f"Successfully retrieved {len(team_names)} unique teams")
         return result
 
     except requests.exceptions.ConnectionError as e:
@@ -506,15 +505,13 @@ def get_teams(
 
 
 @mcp.tool()
-def get_repoteams(
-    repo_slug: str = None
-) -> Dict[str, Any]:
+def get_repoteams(repo_slug: str = None) -> Dict[str, Any]:
     """
     Retrieve teams for a specific repository from the GitHub API.
-    
+
     Args:
         repo_slug: The repository slug/name to get teams for
-        
+
     Returns:
         Dictionary containing:
         - repo: The repository slug that was queried
@@ -528,7 +525,7 @@ def get_repoteams(
         # Get configuration from environment variables
         api_url = os.getenv("GITHUB_API_ENDPOINT")
         bearer_token = os.getenv("GITHUB_BEARER_TOKEN")
-        org = os.getenv("GITHUB_ORG_NAME", "Hogarth-Worldwide")
+        org = os.getenv("GITHUB_ORG_NAME")
 
         # Validate required configuration
         if not api_url:
@@ -550,9 +547,7 @@ def get_repoteams(
             "Accept": "application/json",
         }
 
-        logger.info(
-            f"Fetching teams from API: repo_slug={repo_slug}"
-        )
+        logger.info(f"Fetching teams from API: repo_slug={repo_slug}")
 
         api_url = f"{api_url}/repos/{org}/{repo_slug}/teams"
 
@@ -568,13 +563,13 @@ def get_repoteams(
         # Extract team names from the response array, including parent names if present
         # Use a set to ensure no duplicates
         team_names_set = set()
-        
+
         if isinstance(data, list):
             for team in data:
                 if isinstance(team, dict) and "name" in team:
                     # Add the team name
                     team_names_set.add(team["name"])
-                    
+
                     # Check if there's a parent field and it's not null
                     parent = team.get("parent")
                     if parent and isinstance(parent, dict) and "name" in parent:
@@ -636,10 +631,10 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
     """
     Retrieve repositories for a specific team from the GitHub API.
     Collates repositories into archived and non-archived lists.
-    
+
     Args:
         team_name: The name of the team to get repositories for
-        
+
     Returns:
         Dictionary containing:
         - team_name: The team name that was queried
@@ -656,7 +651,7 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
         # Get configuration from environment variables
         api_url = os.getenv("GITHUB_API_ENDPOINT")
         bearer_token = os.getenv("GITHUB_BEARER_TOKEN")
-        org = os.getenv("GITHUB_ORG_NAME", "Hogarth-Worldwide")
+        org = os.getenv("GITHUB_ORG_NAME")
 
         # Validate required configuration
         if not api_url:
@@ -690,15 +685,15 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
         # Initialize lists for categorizing repositories
         archived_repos = []
         active_repos = []
-        
+
         # Start with the first page
         current_url = f"{api_url}/orgs/{org}/teams/{team_name}/repos"
         page_count = 0
-        
+
         while current_url:
             page_count += 1
             logger.info(f"Fetching page {page_count} from: {current_url}")
-            
+
             # Make the API request
             response = requests.get(current_url, headers=headers, timeout=30)
 
@@ -714,12 +709,12 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
                     if isinstance(repo, dict) and "name" in repo:
                         repo_name = repo["name"]
                         is_archived = repo.get("archived", False)
-                        
+
                         if is_archived:
                             archived_repos.append(repo_name)
                         else:
                             active_repos.append(repo_name)
-            
+
             # Check for next page in Link header
             current_url = None
             link_header = response.headers.get("Link", "")
@@ -734,14 +729,14 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
                         rel = rel_part.strip()
                         if 'rel="next"' in rel:
                             links["next"] = url
-                
+
                 # Set next URL if it exists
                 current_url = links.get("next")
                 if current_url:
                     logger.info(f"Found next page: {current_url}")
                 else:
                     logger.info("No more pages found")
-        
+
         logger.info(f"Completed pagination after {page_count} pages")
 
         # Sort the lists for consistent output
@@ -790,7 +785,9 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
         elif status_code == 403:
             error_msg = "Access forbidden. Check your permissions for this team."
         elif status_code == 404:
-            error_msg = f"Team not found or repositories not accessible for team: {team_name}"
+            error_msg = (
+                f"Team not found or repositories not accessible for team: {team_name}"
+            )
         elif status_code == 429:
             error_msg = "Rate limit exceeded. Please wait and try again."
         else:
@@ -831,12 +828,12 @@ def get_team_members(
 ) -> Dict[str, Any]:
     """
     Retrieve team members from the GitHub API.
-    
+
     Args:
         team_name: The name of the team to get members for
         page: Page number for pagination (default: 1)
         page_size: Number of groups per page (default: 30)
-        
+
     Returns:
         Dictionary containing:
         - members: List of team members
@@ -849,7 +846,7 @@ def get_team_members(
         # Get configuration from environment variables
         api_url = os.getenv("GITHUB_API_ENDPOINT")
         bearer_token = os.getenv("GITHUB_BEARER_TOKEN")
-        org = os.getenv("GITHUB_ORG_NAME", "Hogarth-Worldwide")
+        org = os.getenv("GITHUB_ORG_NAME")
 
         # Validate required configuration
         if not api_url:
@@ -871,9 +868,7 @@ def get_team_members(
             "Accept": "application/json",
         }
 
-        logger.info(
-            f"Fetching teams from API: per_page={page_size}&page={page}"
-        )
+        logger.info(f"Fetching teams from API: per_page={page_size}&page={page}")
 
         api_url = f"{api_url}/orgs/{org}/teams/{team_name}/members?per_page={page_size}&page={page}"
 
@@ -889,7 +884,7 @@ def get_team_members(
         # Extract team names from the response array, including parent names if present
         # Use a set to ensure no duplicates
         members_set = set()
-        
+
         if isinstance(data, list):
             for member in data:
                 if isinstance(member, dict) and "login" in member:
@@ -907,9 +902,7 @@ def get_team_members(
             "success": True,
         }
 
-        logger.info(
-            f"Successfully retrieved {len(member_names)} unique teams"
-        )
+        logger.info(f"Successfully retrieved {len(member_names)} unique teams")
         return result
 
     except requests.exceptions.ConnectionError as e:
@@ -945,6 +938,66 @@ def get_team_members(
         logger.error(f"Unexpected error getting groups: {e}")
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
+
+@mcp.tool()
+def update_file(
+    repo_name: str,
+    branch_name: str,
+    file_path: str,
+    file_content: str,
+    commit_message: str,
+) -> Dict[str, Any]:
+    """
+    Updates a file using GitHubService.
+
+    Args:
+        repo_name : The name of the repository
+        branch_name : The branch to update the file in
+        file_path : The path to the file in the repository
+        file_content : The new content for the file
+        commit_message : The commit message for the update
+
+    Returns:
+        Dictionary containing:
+        - commit_sha: The SHA of the commit made
+        - success: Boolean indicating if the request was successful
+        - error: Error message (if any occurred)
+    """
+    try:
+        # Load configuration from environment variables
+        config = AppConfiguration.from_env()
+
+        # Create the factory and service
+        factory = GitHubClientFactory(config)
+        github_service = GitHubService(factory)
+
+        logger.info(
+            f"Updating file {file_path} in repo {repo_name} on branch {branch_name}"
+        )
+
+        response = github_service.update_file_using_git_api(
+            owner=config.github_org,
+            repo_name=repo_name,
+            branch_name=branch_name,
+            file_path=file_path,
+            file_content=file_content,
+            commit_message=commit_message,
+        )
+
+        # Structure the response
+        result = {
+            "commit_sha": response["commit_sha"],
+            "success": True,
+        }
+
+        logger.info(
+            f"Successfully updated file {file_path} in repo {repo_name} on branch {branch_name}"
+        )
+        return result
+
+    except Exception as e:
+        logger.error(f"Unexpected error updating file: {e}")
+        return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
 if __name__ == "__main__":
