@@ -31,12 +31,32 @@ mcp = FastMCP("pete-github-server")
 def list_files(folder_path: str) -> Dict[str, Any]:
     """
     List all files and directories in the specified folder path.
+    
+    This tool provides detailed information about directory contents including
+    file sizes, types, and modification times. Results are sorted alphabetically
+    for consistent output.
 
     Args:
-        folder_path: The absolute or relative path to the directory to list
+        folder_path: The absolute or relative path to the directory to list.
+                    Examples: "/home/user/documents", "C:\\Users\\name\\Desktop", "."
 
     Returns:
-        Dictionary containing the list of files and directories with their metadata
+        Dictionary containing the list of files and directories with their metadata:
+        - path (str): The resolved absolute path that was listed
+        - total_items (int): Number of items found in the directory
+        - files (list): Array of file/directory objects, each containing:
+            - name (str): File or directory name
+            - path (str): Full absolute path to the item
+            - type (str): Either "file" or "directory"
+            - size (int|None): File size in bytes (null for directories)
+            - modified (float|None): Last modification time as Unix timestamp
+        - success (bool): True if operation succeeded
+        - error (str, optional): Error message if operation failed
+        
+    Examples:
+        - list_files("/home/user/documents") - List files in documents folder
+        - list_files(".") - List files in current directory
+        - list_files("C:\\Users\\name\\Downloads") - List Windows Downloads folder
     """
     try:
         # Convert to Path object and resolve
@@ -105,20 +125,38 @@ def get_groups(
     page: int = 1, page_size: int = 10, search: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Retrieve groups from the API with pagination and optional search functionality.
-    Returns groups as a dictionary where group names are keys and IDs are values.
+    Retrieve groups from the Groups API with pagination and optional search functionality.
+    
+    This tool fetches groups from a secure API endpoint and returns them as a dictionary
+    where group names are keys and IDs are values. Supports pagination for large datasets
+    and optional search filtering.
 
     Args:
-        page: Page number for pagination (default: 1)
-        page_size: Number of groups per page (default: 10)
-        search: Optional search term to filter groups
+        page: Page number for pagination (default: 1, must be >= 1)
+        page_size: Number of groups per page (default: 10, typically 1-100)
+        search: Optional search term to filter groups by name or other attributes
 
     Returns:
         Dictionary containing:
-        - groups: Dict[str, str] mapping group names to IDs
-        - groups_count: Number of groups retrieved
-        - pagination: Pagination metadata
-        - original_groups_array: Original API response for reference
+        - groups (Dict[str, str]): Mapping of group names to their IDs
+        - groups_count (int): Number of groups retrieved in this response
+        - pagination (dict): Pagination metadata with:
+            - page (int): Current page number
+            - page_size (int): Items per page
+            - total (int): Total number of groups available
+            - total_pages (int): Total number of pages
+            - has_next (bool): Whether there are more pages
+            - has_previous (bool): Whether there are previous pages
+        - original_groups_array (list): Original API response for reference
+        - search (str|None): The search term used (if any)
+        - timestamp (str): API response timestamp
+        - success (bool): True if operation succeeded
+        - error (str, optional): Error message if operation failed
+        
+    Examples:
+        - get_groups() - Get first page of groups (default 10 items)
+        - get_groups(page=2, page_size=20) - Get second page with 20 items per page
+        - get_groups(search="admin") - Search for groups matching "admin"
     """
     try:
         # Get configuration from environment variables
@@ -250,17 +288,25 @@ def get_groups(
 @mcp.tool()
 def get_usercount(group_id: str) -> Dict[str, Any]:
     """
-    Get the user count for a specific group by calling the group memberships API.
+    Get the user count for a specific group by querying the group memberships API.
+    
+    This tool retrieves the total number of users/members in a specific group without
+    fetching the actual member details, making it efficient for counting purposes.
 
     Args:
-        group_id: The ID of the group to get user count for
+        group_id: The ID of the group to get user count for (required, non-empty string)
 
     Returns:
         Dictionary containing:
-        - user_count: Total number of users in the group
-        - group_id: The group ID that was queried
-        - success: Boolean indicating if the request was successful
-        - error: Error message (if any occurred)
+        - user_count (int): Total number of users in the group
+        - group_id (str): The group ID that was queried
+        - timestamp (str): API response timestamp
+        - success (bool): True if operation succeeded
+        - error (str, optional): Error message if operation failed
+        
+    Examples:
+        - get_usercount("12345") - Get user count for group with ID "12345"
+        - get_usercount(group_id="admin-group-id") - Get count for admin group
     """
     try:
         # Get configuration from environment variables
@@ -388,19 +434,27 @@ def get_usercount(group_id: str) -> Dict[str, Any]:
 @mcp.tool()
 def get_teams(page: int = 1, page_size: int = 100) -> Dict[str, Any]:
     """
-    Retrieve teams from the GitHub API.
+    Retrieve teams from the GitHub organization.
+    
+    This tool fetches all teams in the configured GitHub organization with pagination
+    support. Team names are deduplicated and sorted, and parent team names are included.
 
     Args:
-        page: Page number for pagination (default: 1)
-        page_size: Number of groups per page (default: 100)
+        page: Page number for pagination (default: 1, must be >= 1)
+        page_size: Number of teams per page (default: 100, max typically 100)
 
     Returns:
         Dictionary containing:
-        - teams: List of team names
-        - team_count: Number of teams found
-        - timestamp: API response timestamp
-        - success: Boolean indicating if the request was successful
-        - error: Error message (if any occurred)
+        - teams (list[str]): Sorted list of unique team names (includes parent teams)
+        - team_count (int): Number of unique teams found
+        - timestamp (str): API response timestamp
+        - success (bool): True if operation succeeded
+        - error (str, optional): Error message if operation failed
+        - status_code (int, optional): HTTP status code if error occurred
+        
+    Examples:
+        - get_teams() - Get first 100 teams from the organization
+        - get_teams(page=2, page_size=50) - Get teams 51-100 with 50 per page
     """
     try:
         # Get configuration from environment variables
@@ -507,19 +561,27 @@ def get_teams(page: int = 1, page_size: int = 100) -> Dict[str, Any]:
 @mcp.tool()
 def get_repoteams(repo_slug: str = None) -> Dict[str, Any]:
     """
-    Retrieve teams for a specific repository from the GitHub API.
+    Retrieve teams that have access to a specific repository from the GitHub API.
+    
+    This tool fetches all teams with access to the specified repository in the
+    configured organization. Useful for understanding repository permissions and access.
 
     Args:
-        repo_slug: The repository slug/name to get teams for
+        repo_slug: The repository slug/name to get teams for (e.g., "my-repo", "sample-mcp")
 
     Returns:
         Dictionary containing:
-        - repo: The repository slug that was queried
-        - teams: List of team names
-        - team_count: Number of teams found
-        - timestamp: API response timestamp
-        - success: Boolean indicating if the request was successful
-        - error: Error message (if any occurred)
+        - repo (str): The repository slug that was queried
+        - teams (list[str]): Sorted list of unique team names with access (includes parent teams)
+        - team_count (int): Number of unique teams found
+        - timestamp (str): API response timestamp
+        - success (bool): True if operation succeeded
+        - error (str, optional): Error message if operation failed
+        - status_code (int, optional): HTTP status code if error occurred
+        
+    Examples:
+        - get_repoteams("my-repo") - Get teams with access to "my-repo"
+        - get_repoteams(repo_slug="sample-mcp") - Get teams for sample-mcp repository
     """
     try:
         # Get configuration from environment variables
@@ -629,23 +691,31 @@ def get_repoteams(repo_slug: str = None) -> Dict[str, Any]:
 @mcp.tool()
 def get_teamrepos(team_name: str) -> Dict[str, Any]:
     """
-    Retrieve repositories for a specific team from the GitHub API.
-    Collates repositories into archived and non-archived lists.
+    Retrieve repositories accessible by a specific team from the GitHub API.
+    
+    This tool fetches all repositories that a team has access to and categorizes them
+    into archived and active repositories. Automatically handles pagination to retrieve
+    all repositories regardless of count.
 
     Args:
-        team_name: The name of the team to get repositories for
+        team_name: The name of the team to get repositories for (required, non-empty string)
 
     Returns:
         Dictionary containing:
-        - team_name: The team name that was queried
-        - archived_repos: List of archived repository names
-        - active_repos: List of non-archived repository names
-        - archived_count: Number of archived repositories
-        - active_count: Number of active repositories
-        - total_count: Total number of repositories
-        - timestamp: API response timestamp
-        - success: Boolean indicating if the request was successful
-        - error: Error message (if any occurred)
+        - team_name (str): The team name that was queried
+        - archived_repos (list[str]): Sorted list of archived repository names
+        - active_repos (list[str]): Sorted list of non-archived repository names
+        - archived_count (int): Number of archived repositories
+        - active_count (int): Number of active repositories
+        - total_count (int): Total number of repositories (archived + active)
+        - timestamp (str): API response timestamp
+        - success (bool): True if operation succeeded
+        - error (str, optional): Error message if operation failed
+        - status_code (int, optional): HTTP status code if error occurred
+        
+    Examples:
+        - get_teamrepos("platform-team") - Get all repos accessible by platform-team
+        - get_teamrepos(team_name="developers") - Get repos for developers team
     """
     try:
         # Get configuration from environment variables
@@ -827,20 +897,28 @@ def get_team_members(
     team_name: str, page: int = 1, page_size: int = 30
 ) -> Dict[str, Any]:
     """
-    Retrieve team members from the GitHub API.
+    Retrieve members of a specific team from the GitHub API.
+    
+    This tool fetches the list of team members (GitHub usernames) for a specified team
+    in the configured organization. Supports pagination for large teams.
 
     Args:
-        team_name: The name of the team to get members for
-        page: Page number for pagination (default: 1)
-        page_size: Number of groups per page (default: 30)
+        team_name: The name of the team to get members for (required)
+        page: Page number for pagination (default: 1, must be >= 1)
+        page_size: Number of members per page (default: 30, typically 1-100)
 
     Returns:
         Dictionary containing:
-        - members: List of team members
-        - members_count: Number of members found
-        - timestamp: API response timestamp
-        - success: Boolean indicating if the request was successful
-        - error: Error message (if any occurred)
+        - members (list[str]): Sorted list of unique member login names
+        - member_count (int): Number of unique members found
+        - timestamp (str): API response timestamp
+        - success (bool): True if operation succeeded
+        - error (str, optional): Error message if operation failed
+        - status_code (int, optional): HTTP status code if error occurred
+        
+    Examples:
+        - get_team_members("platform-team") - Get first 30 members of platform-team
+        - get_team_members("developers", page=2, page_size=50) - Get members 51-100
     """
     try:
         # Get configuration from environment variables
@@ -948,20 +1026,30 @@ def update_file(
     commit_message: str,
 ) -> Dict[str, Any]:
     """
-    Updates a file using GitHubService.
+    Update a file in a GitHub repository using the low-level Git API.
+    
+    This tool uses the Git plumbing API (create_git_blob, create_git_tree, create_git_commit)
+    to update a file in a specific branch of a repository. The file must already exist.
+    Uses GitHub App authentication from environment variables.
 
     Args:
-        repo_name : The name of the repository
-        branch_name : The branch to update the file in
-        file_path : The path to the file in the repository
-        file_content : The new content for the file
-        commit_message : The commit message for the update
+        repo_name: The name of the repository (e.g., "sample-mcp", "my-project")
+        branch_name: The branch to update the file in (e.g., "main", "develop")
+        file_path: The path to the file within the repository (e.g., "src/main.py", "README.md")
+        file_content: The new content for the file (as a string)
+        commit_message: The commit message for the update (e.g., "Update configuration")
 
     Returns:
         Dictionary containing:
-        - commit_sha: The SHA of the commit made
-        - success: Boolean indicating if the request was successful
-        - error: Error message (if any occurred)
+        - commit_sha (str): The SHA of the commit that was created
+        - success (bool): True if operation succeeded
+        - error (str, optional): Error message if operation failed
+        
+    Examples:
+        - update_file("my-repo", "main", "README.md", "# New Content", "Update README")
+        - update_file(repo_name="sample-mcp", branch_name="develop", 
+                     file_path="config.json", file_content='{"key": "value"}',
+                     commit_message="Update config")
     """
     try:
         # Load configuration from environment variables
