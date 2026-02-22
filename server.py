@@ -500,7 +500,7 @@ def get_teams(page: int = 1, page_size: int = 100) -> Dict[str, Any]:
         logger.error(f"JSON decode error: {e}")
         return {"error": "Invalid JSON response from API", "success": False}
     except Exception as e:
-        logger.error(f"Unexpected error getting groups: {e}")
+        logger.error(f"Unexpected error getting teams: {e}")
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
@@ -622,7 +622,7 @@ def get_repoteams(repo_slug: str = None) -> Dict[str, Any]:
         logger.error(f"JSON decode error: {e}")
         return {"error": "Invalid JSON response from API", "success": False}
     except Exception as e:
-        logger.error(f"Unexpected error getting groups: {e}")
+        logger.error(f"Unexpected error getting repository teams: {e}")
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
@@ -902,7 +902,7 @@ def get_team_members(
             "success": True,
         }
 
-        logger.info(f"Successfully retrieved {len(member_names)} unique teams")
+        logger.info(f"Successfully retrieved {len(member_names)} unique team members")
         return result
 
     except requests.exceptions.ConnectionError as e:
@@ -935,7 +935,7 @@ def get_team_members(
         logger.error(f"JSON decode error: {e}")
         return {"error": "Invalid JSON response from API", "success": False}
     except Exception as e:
-        logger.error(f"Unexpected error getting groups: {e}")
+        logger.error(f"Unexpected error getting team members: {e}")
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 

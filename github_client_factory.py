@@ -180,4 +180,3 @@ class GitHubClientFactory:
         )
         
         return token
-        return token
