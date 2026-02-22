@@ -93,7 +93,7 @@ def list_files(folder_path: str) -> Dict[str, Any]:
                 files_list.append(item_info)
             except (OSError, PermissionError) as e:
                 # Skip items we can't access
-                logger.warning(f"Cannot access {item}: {e}")
+                logger.warning("Cannot access %s: %s", item, e)
                 continue
 
         # Sort by name for consistent output
@@ -252,13 +252,13 @@ def get_groups(
         return result
 
     except requests.exceptions.ConnectionError as e:
-        logger.error(f"Connection error: {e}")
+        logger.error("Connection error: %s", e)
         return {"error": f"Failed to connect to API: {str(e)}", "success": False}
     except requests.exceptions.Timeout as e:
-        logger.error(f"Request timeout: {e}")
+        logger.error("Request timeout: %s", e)
         return {"error": "API request timed out. Please try again.", "success": False}
     except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error: {e}")
+        logger.error("HTTP error: %s", e)
         status_code = e.response.status_code if e.response else "Unknown"
 
         # Handle common HTTP status codes
@@ -275,13 +275,13 @@ def get_groups(
 
         return {"error": error_msg, "status_code": status_code, "success": False}
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request error: {e}")
+        logger.error("Request error: %s", e)
         return {"error": f"Request failed: {str(e)}", "success": False}
     except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
+        logger.error("JSON decode error: %s", e)
         return {"error": "Invalid JSON response from API", "success": False}
     except Exception as e:
-        logger.error(f"Unexpected error getting groups: {e}")
+        logger.error("Unexpected error getting groups: %s", e)
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
@@ -340,7 +340,7 @@ def get_usercount(group_id: str) -> Dict[str, Any]:
             "Accept": "application/json",
         }
 
-        logger.info(f"Fetching user count for group ID: {group_id}")
+        logger.info("Fetching user count for group ID: %s", group_id)
 
         # Construct the API URL for group memberships
         # Based on the sample response structure, this appears to be a memberships endpoint
@@ -373,21 +373,21 @@ def get_usercount(group_id: str) -> Dict[str, Any]:
         return result
 
     except requests.exceptions.ConnectionError as e:
-        logger.error(f"Connection error: {e}")
+        logger.error("Connection error: %s", e)
         return {
             "error": f"Failed to connect to API: {str(e)}",
             "group_id": group_id,
             "success": False,
         }
     except requests.exceptions.Timeout as e:
-        logger.error(f"Request timeout: {e}")
+        logger.error("Request timeout: %s", e)
         return {
             "error": "API request timed out. Please try again.",
             "group_id": group_id,
             "success": False,
         }
     except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error: {e}")
+        logger.error("HTTP error: %s", e)
         status_code = e.response.status_code if e.response else "Unknown"
 
         # Handle common HTTP status codes
@@ -409,21 +409,21 @@ def get_usercount(group_id: str) -> Dict[str, Any]:
             "success": False,
         }
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request error: {e}")
+        logger.error("Request error: %s", e)
         return {
             "error": f"Request failed: {str(e)}",
             "group_id": group_id,
             "success": False,
         }
     except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
+        logger.error("JSON decode error: %s", e)
         return {
             "error": "Invalid JSON response from API",
             "group_id": group_id,
             "success": False,
         }
     except Exception as e:
-        logger.error(f"Unexpected error getting user count for group {group_id}: {e}")
+        logger.error("Unexpected error getting user count for group %s: %s", group_id, e)
         return {
             "error": f"Unexpected error: {str(e)}",
             "group_id": group_id,
@@ -482,7 +482,7 @@ def get_teams(page: int = 1, page_size: int = 100) -> Dict[str, Any]:
             "Accept": "application/json",
         }
 
-        logger.info(f"Fetching teams from API: per_page={page_size}&page={page}")
+        logger.info("Fetching teams from API: per_page=%s&page=%s", page_size, page)
 
         api_url = f"{api_url}/orgs/{org}/teams?per_page={page_size}&page={page}"
 
@@ -521,17 +521,17 @@ def get_teams(page: int = 1, page_size: int = 100) -> Dict[str, Any]:
             "success": True,
         }
 
-        logger.info(f"Successfully retrieved {len(team_names)} unique teams")
+        logger.info("Successfully retrieved %s unique teams", len(team_names))
         return result
 
     except requests.exceptions.ConnectionError as e:
-        logger.error(f"Connection error: {e}")
+        logger.error("Connection error: %s", e)
         return {"error": f"Failed to connect to API: {str(e)}", "success": False}
     except requests.exceptions.Timeout as e:
-        logger.error(f"Request timeout: {e}")
+        logger.error("Request timeout: %s", e)
         return {"error": "API request timed out. Please try again.", "success": False}
     except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error: {e}")
+        logger.error("HTTP error: %s", e)
         status_code = e.response.status_code if e.response else "Unknown"
 
         # Handle common HTTP status codes
@@ -548,13 +548,13 @@ def get_teams(page: int = 1, page_size: int = 100) -> Dict[str, Any]:
 
         return {"error": error_msg, "status_code": status_code, "success": False}
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request error: {e}")
+        logger.error("Request error: %s", e)
         return {"error": f"Request failed: {str(e)}", "success": False}
     except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
+        logger.error("JSON decode error: %s", e)
         return {"error": "Invalid JSON response from API", "success": False}
     except Exception as e:
-        logger.error(f"Unexpected error getting teams: {e}")
+        logger.error("Unexpected error getting teams: %s", e)
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
@@ -609,7 +609,7 @@ def get_repoteams(repo_slug: str = None) -> Dict[str, Any]:
             "Accept": "application/json",
         }
 
-        logger.info(f"Fetching teams from API: repo_slug={repo_slug}")
+        logger.info("Fetching teams from API: repo_slug=%s", repo_slug)
 
         api_url = f"{api_url}/repos/{org}/{repo_slug}/teams"
 
@@ -655,13 +655,13 @@ def get_repoteams(repo_slug: str = None) -> Dict[str, Any]:
         return result
 
     except requests.exceptions.ConnectionError as e:
-        logger.error(f"Connection error: {e}")
+        logger.error("Connection error: %s", e)
         return {"error": f"Failed to connect to API: {str(e)}", "success": False}
     except requests.exceptions.Timeout as e:
-        logger.error(f"Request timeout: {e}")
+        logger.error("Request timeout: %s", e)
         return {"error": "API request timed out. Please try again.", "success": False}
     except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error: {e}")
+        logger.error("HTTP error: %s", e)
         status_code = e.response.status_code if e.response else "Unknown"
 
         # Handle common HTTP status codes
@@ -678,13 +678,13 @@ def get_repoteams(repo_slug: str = None) -> Dict[str, Any]:
 
         return {"error": error_msg, "status_code": status_code, "success": False}
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request error: {e}")
+        logger.error("Request error: %s", e)
         return {"error": f"Request failed: {str(e)}", "success": False}
     except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
+        logger.error("JSON decode error: %s", e)
         return {"error": "Invalid JSON response from API", "success": False}
     except Exception as e:
-        logger.error(f"Unexpected error getting repository teams: {e}")
+        logger.error("Unexpected error getting repository teams: %s", e)
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
@@ -750,7 +750,7 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
             "Accept": "application/json",
         }
 
-        logger.info(f"Fetching repositories for team: {team_name}")
+        logger.info("Fetching repositories for team: %s", team_name)
 
         # Initialize lists for categorizing repositories
         archived_repos = []
@@ -762,7 +762,7 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
 
         while current_url:
             page_count += 1
-            logger.info(f"Fetching page {page_count} from: {current_url}")
+            logger.info("Fetching page %s from: %s", page_count, current_url)
 
             # Make the API request
             response = requests.get(current_url, headers=headers, timeout=30)
@@ -803,11 +803,11 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
                 # Set next URL if it exists
                 current_url = links.get("next")
                 if current_url:
-                    logger.info(f"Found next page: {current_url}")
+                    logger.info("Found next page: %s", current_url)
                 else:
                     logger.info("No more pages found")
 
-        logger.info(f"Completed pagination after {page_count} pages")
+        logger.info("Completed pagination after %s pages", page_count)
 
         # Sort the lists for consistent output
         archived_repos.sort()
@@ -832,21 +832,21 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
         return result
 
     except requests.exceptions.ConnectionError as e:
-        logger.error(f"Connection error: {e}")
+        logger.error("Connection error: %s", e)
         return {
             "error": f"Failed to connect to API: {str(e)}",
             "team_name": team_name,
             "success": False,
         }
     except requests.exceptions.Timeout as e:
-        logger.error(f"Request timeout: {e}")
+        logger.error("Request timeout: %s", e)
         return {
             "error": "API request timed out. Please try again.",
             "team_name": team_name,
             "success": False,
         }
     except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error: {e}")
+        logger.error("HTTP error: %s", e)
         status_code = e.response.status_code if e.response else "Unknown"
 
         # Handle common HTTP status codes
@@ -870,21 +870,21 @@ def get_teamrepos(team_name: str) -> Dict[str, Any]:
             "success": False,
         }
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request error: {e}")
+        logger.error("Request error: %s", e)
         return {
             "error": f"Request failed: {str(e)}",
             "team_name": team_name,
             "success": False,
         }
     except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
+        logger.error("JSON decode error: %s", e)
         return {
             "error": "Invalid JSON response from API",
             "team_name": team_name,
             "success": False,
         }
     except Exception as e:
-        logger.error(f"Unexpected error getting repositories for team {team_name}: {e}")
+        logger.error("Unexpected error getting repositories for team %s: %s", team_name, e)
         return {
             "error": f"Unexpected error: {str(e)}",
             "team_name": team_name,
@@ -946,7 +946,7 @@ def get_team_members(
             "Accept": "application/json",
         }
 
-        logger.info(f"Fetching teams from API: per_page={page_size}&page={page}")
+        logger.info("Fetching teams from API: per_page=%s&page=%s", page_size, page)
 
         api_url = f"{api_url}/orgs/{org}/teams/{team_name}/members?per_page={page_size}&page={page}"
 
@@ -980,17 +980,17 @@ def get_team_members(
             "success": True,
         }
 
-        logger.info(f"Successfully retrieved {len(member_names)} unique team members")
+        logger.info("Successfully retrieved %s unique team members", len(member_names))
         return result
 
     except requests.exceptions.ConnectionError as e:
-        logger.error(f"Connection error: {e}")
+        logger.error("Connection error: %s", e)
         return {"error": f"Failed to connect to API: {str(e)}", "success": False}
     except requests.exceptions.Timeout as e:
-        logger.error(f"Request timeout: {e}")
+        logger.error("Request timeout: %s", e)
         return {"error": "API request timed out. Please try again.", "success": False}
     except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error: {e}")
+        logger.error("HTTP error: %s", e)
         status_code = e.response.status_code if e.response else "Unknown"
 
         # Handle common HTTP status codes
@@ -1007,13 +1007,13 @@ def get_team_members(
 
         return {"error": error_msg, "status_code": status_code, "success": False}
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request error: {e}")
+        logger.error("Request error: %s", e)
         return {"error": f"Request failed: {str(e)}", "success": False}
     except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
+        logger.error("JSON decode error: %s", e)
         return {"error": "Invalid JSON response from API", "success": False}
     except Exception as e:
-        logger.error(f"Unexpected error getting team members: {e}")
+        logger.error("Unexpected error getting team members: %s", e)
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
@@ -1084,7 +1084,7 @@ def update_file(
         return result
 
     except Exception as e:
-        logger.error(f"Unexpected error updating file: {e}")
+        logger.error("Unexpected error updating file: %s", e)
         return {"error": f"Unexpected error: {str(e)}", "success": False}
 
 
